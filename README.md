@@ -209,16 +209,78 @@ curl -o page.pdf -XPOST -d@receipt.html -H"content-type: text/html" "http://loca
 * **Node.js**: 18.x or higher (Node 18, 20, 22+)
 * **Debian / Ubuntu** Linux (or macOS)
 
-### 2. Install System Chromium (Debian / Ubuntu)
+### 2. Install Required Debian / Ubuntu Packages
 
-The recommended setup is using Debian's Chromium package:
+Running Headless Chrome / Chromium on a Debian/Ubuntu server requires specific packages. You can choose either **Option A** (recommended) or **Option B**:
+
+#### Option A: Use Debian's Chromium Package (Recommended)
+
+Installing the distribution's `chromium` package automatically pulls in all required shared libraries and fonts, and receives security updates via `apt`:
 
 ```bash
 sudo apt update
-sudo apt install -y chromium fonts-liberation
+sudo apt install -y \
+  chromium \
+  fonts-liberation \
+  fonts-noto-color-emoji
 ```
 
-*(Alternatively, if using Puppeteer's Chrome download, ensure standard runtime libs are installed: `ca-certificates fonts-liberation libasound2 libatk-bridge2.0-0 libatk1.0-0 libcairo2 libcups2 libdrm2 libgbm1 libnss3 libpango-1.0-0 libx11-6 libxcomposite1 libxdamage1 libxext6 libxrandr2 xdg-utils`)*
+After installation, verify the binary location:
+```bash
+which chromium
+# Output: /usr/bin/chromium
+```
+Then configure `export PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium` in your `.env` file (see Step 4).
+
+#### Option B: Use Puppeteer's Bundled Chrome
+
+If you prefer using Puppeteer's downloaded Chrome build instead of the Debian package, install the required system libraries manually:
+
+```bash
+sudo apt update
+sudo apt install -y \
+  ca-certificates \
+  fonts-liberation \
+  fonts-noto-color-emoji \
+  libasound2 \
+  libatk-bridge2.0-0 \
+  libatk1.0-0 \
+  libc6 \
+  libcairo2 \
+  libcups2 \
+  libdbus-1-3 \
+  libdrm2 \
+  libexpat1 \
+  libfontconfig1 \
+  libgbm1 \
+  libglib2.0-0 \
+  libgtk-3-0 \
+  libnspr4 \
+  libnss3 \
+  libpango-1.0-0 \
+  libpangocairo-1.0-0 \
+  libx11-6 \
+  libx11-xcb1 \
+  libxcb1 \
+  libxcomposite1 \
+  libxcursor1 \
+  libxdamage1 \
+  libxext6 \
+  libxfixes3 \
+  libxi6 \
+  libxrandr2 \
+  libxrender1 \
+  libxss1 \
+  libxtst6 \
+  xdg-utils
+```
+
+*(Note for Debian 12 / Bookworm: `libasound2t64` or `libasound2` is resolved automatically by `apt`)*
+
+Alternatively, Puppeteer provides an automatic installer command that detects your Linux distribution and installs missing packages:
+```bash
+npx puppeteer browsers install chrome --install-deps
+```
 
 ### 3. Setup Project
 
