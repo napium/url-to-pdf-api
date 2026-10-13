@@ -1,12 +1,11 @@
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/alvarcarto/url-to-pdf-api)
-
-[![Build Status](https://travis-ci.org/alvarcarto/url-to-pdf-api.svg?branch=master)](https://travis-ci.org/alvarcarto/url-to-pdf-api)
-
 # URL to PDF Microservice
 
-> Web page PDF rendering done right. Microservice for rendering receipts, invoices, or any content. Packaged to an easy API.
+> Web page PDF rendering done right. Microservice for rendering receipts, invoices, or any web content as PDF. Packaged into a simple API.
 
 ![Logo](docs/logo.png)
+
+> **Notice / Fork Information:**  
+> This project is a modernized fork of [alvarcarto/url-to-pdf-api](https://github.com/alvarcarto/url-to-pdf-api) (originally created by Kimmo Brunfeldt). Because the original repository is no longer maintained, this fork upgrades the entire stack to Node.js 18+ and modern Puppeteer (Chromium), adds support for system-installed Chromium (Debian/Ubuntu), provides robust reverse-proxy support (Apache / Nginx), and fixes deprecated APIs and dependencies.
 
 **WARNING:** *Don't serve this API publicly to the internet unless you are aware of the
 risks. It allows API users to run any JavaScript code inside a Chrome session on the server.
@@ -15,14 +14,15 @@ It's fairly easy to expose the contents of files on the server. You have been wa
 **⭐️ Features:**
 
 * Converts any URL or HTML content to a PDF file
-* Rendered with Headless Chrome, using [Puppeteer](https://github.com/GoogleChrome/puppeteer). The PDFs should match to the ones generated with a desktop Chrome.
-* Sensible defaults but everything is configurable.
-* Single-page app (SPA) support. Waits until all network requests are finished before rendering. **A feature which even most of the paid services don't have.**
-* Easy deployment to Heroku. We love Lambda but...Deploy to Heroku button.
-* Renders lazy loaded elements. *(scrollPage option)*
-* Supports optional `x-api-key` authentication. *(`API_TOKENS` env var)*
+* Rendered with modern Headless Chrome / Chromium, using [Puppeteer](https://pptr.dev/). The PDFs match desktop Chrome output.
+* Sensible defaults but everything is configurable (margins, formats, viewport, scale, header/footer).
+* Single-page app (SPA) support. Waits until network requests are finished (`networkidle2`) before rendering.
+* Renders lazy loaded elements (`scrollPage` option).
+* Supports optional `x-api-key` authentication (`API_TOKENS` env var).
+* Supports system Chromium via `PUPPETEER_EXECUTABLE_PATH`.
+* Full reverse-proxy compatibility (Apache, Nginx).
 
-Usage is as simple as https://url-to-pdf-api.herokuapp.com/api/render?url=http://google.com. There's also a `POST /api/render` if you prefer to send options in the body.
+Usage: `GET http://localhost:9000/api/render?url=https://google.com`. There's also `POST /api/render` to send options or HTML in the body.
 
 **🔍 Why?**
 
@@ -37,97 +37,90 @@ content to a PDF. This API does just that.
 
 * [Examples](#examples)
 * [API](#api)
-* [I want to run this myself](#development)
+* [Installation & Deployment](#installation--deployment)
 
-## How it works
+## Good to know
 
-![](docs/heroku.png)
+* **By default, page's `@media print` CSS rules are ignored**. We set Chrome to emulate `@media screen` to make the default PDFs look more like actual sites. To get results closer to desktop Chrome, add `&emulateScreenMedia=false` query parameter. See more at [Puppeteer API docs](https://pptr.dev/).
 
-Local setup is identical except Express API is running on your machine
-and requests are direct connections to it.
-
-### Good to know
-
-* **By default, page's `@media print` CSS rules are ignored**. We set Chrome to emulate `@media screen` to make the default PDFs look more like actual sites. To get results closer to desktop Chrome, add `&emulateScreenMedia=false` query parameter. See more at [Puppeteer API docs](https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md#pagepdfoptions).
-
-* Chrome is launched with `--no-sandbox --disable-setuid-sandbox` flags to fix usage in Heroku. See [this issue](https://github.com/GoogleChrome/puppeteer/issues/290).
+* Chrome is launched with `--no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage` flags.
 
 * Heavy pages may cause Chrome to crash if the server doesn't have enough RAM.
 
 
 ## Examples
 
-*Note: the demo Heroku app runs on a free dyno which sleep after idle.
-A request to sleeping dyno may take even 30 seconds.*
-
-**Use the default @media print instead of @media screen.**
-
-https://url-to-pdf-api.herokuapp.com/api/render?url=http://google.com&emulateScreenMedia=false
-
-**Use scrollPage=true which tries to reveal all lazy loaded elements. Not perfect but better than without.**
-
-https://url-to-pdf-api.herokuapp.com/api/render?url=http://www.andreaverlicchi.eu/lazyload/demos/lazily_load_lazyLoad.html&scrollPage=true
-
-**Render only the first page.**
-
-https://url-to-pdf-api.herokuapp.com/api/render?url=https://en.wikipedia.org/wiki/Portable_Document_Format&pdf.pageRanges=1
-
-**Render A5-sized PDF in landscape.**
-
-https://url-to-pdf-api.herokuapp.com/api/render?url=http://google.com&pdf.format=A5&pdf.landscape=true
-
-**Add 2cm margins to the PDF.**
-
-https://url-to-pdf-api.herokuapp.com/api/render?url=http://google.com&pdf.margin.top=2cm&pdf.margin.right=2cm&pdf.margin.bottom=2cm&pdf.margin.left=2cm
-
-**Wait for extra 1000ms before render.**
-
-https://url-to-pdf-api.herokuapp.com/api/render?url=http://google.com&waitFor=1000
-
-**Wait for an element macthing the selector `input` appears.**
-
-https://url-to-pdf-api.herokuapp.com/api/render?url=http://google.com&waitFor=input
-
-**Render HTML sent in JSON body**
+**Use the default @media print instead of @media screen:**
 
 ```bash
-curl -o html.pdf -XPOST -d'{"html": "<body>test</body>"}' -H"content-type: application/json" https://url-to-pdf-api.herokuapp.com/api/render
+curl -o page.pdf "http://localhost:9000/api/render?url=https://example.com&emulateScreenMedia=false"
 ```
 
-**Render HTML sent as text body**
+**Use scrollPage=true to reveal lazy loaded elements:**
 
 ```bash
-curl -o html.pdf -XPOST -d@page.html -H"content-type: text/html" https://url-to-pdf-api.herokuapp.com/api/render
+curl -o page.pdf "http://localhost:9000/api/render?url=https://example.com&scrollPage=true"
+```
+
+**Render only the first page:**
+
+```bash
+curl -o page.pdf "http://localhost:9000/api/render?url=https://example.com&pdf.pageRanges=1"
+```
+
+**Render A5-sized PDF in landscape:**
+
+```bash
+curl -o page.pdf "http://localhost:9000/api/render?url=https://example.com&pdf.format=A5&pdf.landscape=true"
+```
+
+**Add 2cm margins to the PDF:**
+
+```bash
+curl -o page.pdf "http://localhost:9000/api/render?url=https://example.com&pdf.margin.top=2cm&pdf.margin.right=2cm&pdf.margin.bottom=2cm&pdf.margin.left=2cm"
+```
+
+**Wait for extra 1000ms before render:**
+
+```bash
+curl -o page.pdf "http://localhost:9000/api/render?url=https://example.com&waitFor=1000"
+```
+
+**Wait for an element matching selector `input` to appear:**
+
+```bash
+curl -o page.pdf "http://localhost:9000/api/render?url=https://example.com&waitFor=input"
+```
+
+**Render HTML sent in JSON body:**
+
+```bash
+curl -o html.pdf -XPOST -d'{"html": "<body><h1>Hello</h1></body>"}' -H"content-type: application/json" http://localhost:9000/api/render
+```
+
+**Render HTML sent as text body:**
+
+```bash
+curl -o html.pdf -XPOST -d@page.html -H"content-type: text/html" http://localhost:9000/api/render
 ```
 
 ## API
 
-To understand the API options, it's useful to know how [Puppeteer](https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md)
-is internally used by this API. The [render code](https://github.com/alvarcarto/url-to-pdf-api/blob/master/src/core/pdf-core.js#L26)
-is really simple, check it out. Render flow:
+To understand the API options, it's useful to know how [Puppeteer](https://pptr.dev/)
+is internally used by this API. Render flow:
 
-1. **`page.setViewport(options)`** where options matches `viewport.*`.
-2. *Possibly* **`page.emulateMedia('screen')`** if `emulateScreenMedia=true` is set.
-3. Render url **or** html.
-
-    If `url` is defined, **`page.goto(url, options)`** is called and options match `goto.*`.
-    Otherwise **``page.goto(`data:text/html,${html}`, options)``** is called where html is taken from request body. This workaround was found from [Puppeteer issue](https://github.com/GoogleChrome/puppeteer/issues/728).
-
-4. *Possibly* **`page.waitFor(numOrStr)`** if e.g. `waitFor=1000` is set.
-5. *Possibly* **Scroll the whole page** to the end before rendering if e.g. `scrollPage=true` is set.
-
-    Useful if you want to render a page which lazy loads elements.
-
-6. **`page.pdf(options)`** where options matches `pdf.*`.
+1. **`page.setViewport(options)`** where options match `viewport.*`.
+2. **`page.emulateMediaType('screen')`** if `emulateScreenMedia=true` (default).
+3. Render url **or** html via **`page.goto(url)`** or **`page.setContent(html)`**.
+4. *Possibly* **`page.waitForSelector()`** or timeout if `waitFor` is set.
+5. *Possibly* **Scroll the whole page** to the end before rendering if `scrollPage=true` is set.
+6. **`page.pdf(options)`** where options match `pdf.*`.
 
 
 ### GET /api/render
 
 All options are passed as query parameters.
-Parameter names match [Puppeteer options](https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md).
-
-These options are exactly the same as its `POST` counterpart, but options are
-expressed with the dot notation. E.g. `?pdf.scale=2` instead of `{ pdf: { scale: 2 }}`.
+Parameter names match Puppeteer options with dot notation (e.g. `?pdf.scale=2` instead of `{ pdf: { scale: 2 }}`).
 
 The only required parameter is `url`.
 
@@ -153,140 +146,238 @@ cookies[0][expires] | number | - | Cookie expiry in unix time
 cookies[0][httpOnly] | boolean | - | Cookie httpOnly
 cookies[0][secure] | boolean | - | Cookie secure
 cookies[0][sameSite] | string | - | `Strict` or `Lax`
-goto.timeout | number | `30000` |  Maximum navigation time in milliseconds, defaults to 30 seconds, pass 0 to disable timeout.
-goto.waitUntil | string | `networkidle` | When to consider navigation succeeded. Options: `load`, `networkidle`. `load` = consider navigation to be finished when the load event is fired. `networkidle` = consider navigation to be finished when the network activity stays "idle" for at least `goto.networkIdleTimeout` ms.
-goto.networkIdleInflight | number | `2` | Maximum amount of inflight requests which are considered "idle". Takes effect only with `goto.waitUntil`: 'networkidle' parameter.
-goto.networkIdleTimeout | number | `2000` | A timeout to wait before completing navigation. Takes effect only with waitUntil: 'networkidle' parameter.
+goto.timeout | number | `30000` | Maximum navigation time in milliseconds (0 to disable).
+goto.waitUntil | string | `networkidle2` | When to consider navigation succeeded (`load`, `domcontentloaded`, `networkidle0`, `networkidle2`).
 pdf.scale | number | `1` | Scale of the webpage rendering.
-pdf.printBackground | boolean | `false`| Print background graphics.
+pdf.printBackground | boolean | `true` | Print background graphics.
 pdf.displayHeaderFooter | boolean | `false` | Display header and footer.
 pdf.landscape | boolean | `false` | Paper orientation.
-pdf.pageRanges | string | - | Paper ranges to print, e.g., '1-5, 8, 11-13'. Defaults to the empty string, which means print all pages.
-pdf.format | string | `A4` | Paper format. If set, takes priority over width or height options.
-pdf.width | string | - | Paper width, accepts values labeled with units.
-pdf.height | string | - | Paper height, accepts values labeled with units.
-pdf.margin.top | string | - | Top margin, accepts values labeled with units.
-pdf.margin.right | string | - | Right margin, accepts values labeled with units.
-pdf.margin.bottom | string | - | Bottom margin, accepts values labeled with units.
-pdf.margin.left | string | - | Left margin, accepts values labeled with units.
-
-
-**Example:**
-
-```bash
-curl -o google.pdf https://url-to-pdf-api.herokuapp.com/api/render?url=http://google.com
-```
+pdf.pageRanges | string | - | Paper ranges to print, e.g., '1-5, 8, 11-13'.
+pdf.format | string | `A4` | Paper format. If set, takes priority over width or height.
+pdf.width | string | - | Paper width, accepts values labeled with units (e.g. `210mm`).
+pdf.height | string | - | Paper height, accepts values labeled with units (e.g. `297mm`).
+pdf.margin.top | string | - | Top margin with unit (e.g. `2cm`).
+pdf.margin.right | string | - | Right margin with unit.
+pdf.margin.bottom | string | - | Bottom margin with unit.
+pdf.margin.left | string | - | Left margin with unit.
 
 
 ### POST /api/render - (JSON)
 
 All options are passed in a JSON body object.
-Parameter names match [Puppeteer options](https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md).
-
-These options are exactly the same as its `GET` counterpart.
 
 **Body**
 
-The only required parameter is `url`.
+The only required parameter is `url` (or `html`).
 
-```js
+```json
 {
-  // Url to render. Either url or html is required
-  url: "https://google.com",
-
-  // HTML content to render. Either url or html is required
-  html: "<html><head></head><body>Your content</body></html>",
-
-  // If we should emulate @media screen instead of print
-  emulateScreenMedia: true,
-
-  // If we should ignore HTTPS errors
-  ignoreHttpsErrors: false,
-
-  // If true, page is scrolled to the end before rendering
-  // Note: this makes rendering a bit slower
-  scrollPage: false,
-
-  // Passed to Puppeteer page.waitFor()
-  waitFor: null,
-
-  // Passsed to Puppeteer page.setCookies()
-  cookies: [{ ... }]
-
-  // Passed to Puppeteer page.setViewport()
-  viewport: { ... },
-
-  // Passed to Puppeteer page.goto() as the second argument after url
-  goto: { ... },
-
-  // Passed to Puppeteer page.pdf()
-  pdf: { ... }
+  "url": "https://example.com",
+  "emulateScreenMedia": true,
+  "ignoreHttpsErrors": false,
+  "scrollPage": false,
+  "waitFor": null,
+  "cookies": [],
+  "viewport": {
+    "width": 1600,
+    "height": 1200
+  },
+  "goto": {
+    "waitUntil": "networkidle2"
+  },
+  "pdf": {
+    "format": "A4",
+    "printBackground": true
+  }
 }
-```
-
-**Example:**
-
-```bash
-curl -o google.pdf -XPOST -d'{"url": "http://google.com"}' -H"content-type: application/json" https://url-to-pdf-api.herokuapp.com/api/render
-```
-
-```bash
-curl -o html.pdf -XPOST -d'{"html": "<body>test</body>"}' -H"content-type: application/json" https://url-to-pdf-api.herokuapp.com/api/render
 ```
 
 ### POST /api/render - (HTML)
 
-HTML to render is sent in body. All options are passed in query parameters.
-Supports exactly the same query parameters as `GET /api/render`, except `url`
-paremeter.
-
-*Remember that relative links do not work.*
-
-**Example:**
+HTML to render is sent in body (`Content-Type: text/html`). All options are passed in query parameters.
 
 ```bash
-curl -o receipt.html https://rawgit.com/wildbit/postmark-templates/master/templates_inlined/receipt.html
-curl -o html.pdf -XPOST -d@receipt.html -H"content-type: text/html" https://url-to-pdf-api.herokuapp.com/api/render?pdf.scale=1
+curl -o page.pdf -XPOST -d@receipt.html -H"content-type: text/html" "http://localhost:9000/api/render?pdf.scale=1"
 ```
 
-## Development
+---
 
-To get this thing running, you have two options: run it in Heroku, or locally.
+## Installation & Deployment
 
-The code requires Node 8+ (async, await).
+### 1. Requirements
 
-#### 1. Heroku deployment
+* **Node.js**: 18.x or higher (Node 18, 20, 22+)
+* **Debian / Ubuntu** Linux (or macOS)
 
-Scroll this readme up to the Deploy to Heroku -button. Click it and follow
-instructions.
+### 2. Install System Chromium (Debian / Ubuntu)
 
-**WARNING:** *Heroku dynos have a very low amount of RAM. Rendering heavy pages
-may cause Chrome instance to crash inside Heroku dyno. 512MB should be
-enough for most real-life use cases such as receipts. Some news sites may need
-even 2GB of RAM.*
+The recommended setup is using Debian's Chromium package:
 
+```bash
+sudo apt update
+sudo apt install -y chromium fonts-liberation
+```
 
-#### 2. Local development
+*(Alternatively, if using Puppeteer's Chrome download, ensure standard runtime libs are installed: `ca-certificates fonts-liberation libasound2 libatk-bridge2.0-0 libatk1.0-0 libcairo2 libcups2 libdrm2 libgbm1 libnss3 libpango-1.0-0 libx11-6 libxcomposite1 libxdamage1 libxext6 libxrandr2 xdg-utils`)*
 
-First, clone the repository and cd into it.
+### 3. Setup Project
 
-* `cp .env.sample .env`
-* Fill in the blanks in `.env`
-* `source .env` or `bash .env`
+```bash
+git clone https://github.com/napium/url-to-pdf-api.git
+cd url-to-pdf-api
+npm install
+```
 
-  Or use [autoenv](https://github.com/kennethreitz/autoenv).
+### 4. Configuration (.env)
 
-* `npm install`
-* `npm start` Start express server locally
-* Server runs at http://localhost:9000 or what `$PORT` env defines
+Copy `.env.sample` to `.env`:
 
-On Ubuntu Server, you need to install libs to open Chrome
-`sudo apt-get install libx11-xcb-dev libnss3-dev libxss1`
+```bash
+cp .env.sample .env
+```
 
-### Techstack
+Set your configuration:
 
-* Node 8+ (async, await), written in ES7
-* [Express.js](https://expressjs.com/) app with a nice internal architecture, based on [these conventions](https://github.com/kimmobrunfeldt/express-example).
-* Hapi-style Joi validation with [express-validation](https://github.com/andrewkeig/express-validation)
-* Heroku + [Puppeteer buildpack](https://github.com/jontewks/puppeteer-heroku-buildpack)
-* [Puppeteer](https://github.com/GoogleChrome/puppeteer) to control Chrome
+```bash
+export NODE_ENV=production
+export PORT=9000
+export ALLOW_HTTP=true
+
+# If using Debian's Chromium:
+export PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+
+# Optional: Require x-api-key header for authentication
+# export API_TOKENS=secret1,secret2
+```
+
+### 5. Start the Server
+
+```bash
+# Start with environment variables:
+source .env && npm start
+
+# Or for development with nodemon:
+source .env && npm run dev
+```
+
+### 6. Reverse Proxy Setup (Apache & Nginx)
+
+#### Apache Configuration
+
+Enable the required Apache modules:
+```bash
+sudo a2enmod proxy proxy_http headers
+```
+
+Add the following to your SSL VirtualHost configuration (`<VirtualHost *:443>` block):
+```apache
+# PDF Engine Reverse Proxy
+RequestHeader set X-Forwarded-Proto "https"
+ProxyPass /pdfengine/ http://127.0.0.1:9000/
+ProxyPassReverse /pdfengine/ http://127.0.0.1:9000/
+ProxyTimeout 1200
+```
+
+Reload Apache:
+```bash
+sudo systemctl reload apache2
+```
+
+#### Nginx Configuration
+
+Add a `location` block inside your `server { listen 443 ssl; ... }` block:
+
+```nginx
+# PDF Engine Reverse Proxy
+location /pdfengine/ {
+    proxy_pass http://127.0.0.1:9000/;
+    proxy_http_version 1.1;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+
+    # Timeouts for heavy PDF generation jobs
+    proxy_connect_timeout 60s;
+    proxy_send_timeout 1200s;
+    proxy_read_timeout 1200s;
+
+    # Allow larger payloads when sending HTML body directly
+    client_max_body_size 10M;
+}
+```
+
+Test and reload Nginx:
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### 7. API Authentication (API Tokens)
+
+By default, the API has no authentication enabled. If you want to protect the endpoint:
+
+1. Define one or more secret tokens in `.env` as a comma-separated list:
+   ```bash
+   export API_TOKENS=my-secret-token-1,my-secret-token-2
+   ```
+
+2. When `API_TOKENS` is set, all incoming requests **must** provide the token in the `x-api-key` header, otherwise the API returns `401 Unauthorized`:
+
+   **Using curl (GET):**
+   ```bash
+   curl -H "x-api-key: my-secret-token-1" \
+     "https://your-domain.com/pdfengine/api/render?url=https://example.com" \
+     -o output.pdf
+   ```
+
+   **Using curl (POST JSON):**
+   ```bash
+   curl -X POST "https://your-domain.com/pdfengine/api/render" \
+     -H "x-api-key: my-secret-token-1" \
+     -H "Content-Type: application/json" \
+     -d '{"url": "https://example.com"}' \
+     -o output.pdf
+   ```
+
+### 8. Optional: Systemd Service (Autostart)
+
+Create `/etc/systemd/system/pdf-engine.service`:
+
+```ini
+[Unit]
+Description=URL to PDF API
+After=network.target
+
+[Service]
+Type=simple
+User=rene
+WorkingDirectory=/home/NodeJS/url-to-pdf-api
+EnvironmentFile=/home/NodeJS/url-to-pdf-api/.env
+ExecStart=/usr/bin/node src/index.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now pdf-engine
+```
+
+---
+
+## Techstack
+
+* Node 18+ (async/await, ES2020+)
+* [Express.js](https://expressjs.com/)
+* [Puppeteer](https://pptr.dev/) to control Headless Chrome / Chromium
+* Joi / express-validation
+
+## License
+
+MIT © [René Gehmeyer](https://github.com/napium) (Fork)  
+Original work © 2017 Kimmo Brunfeldt ([alvarcarto/url-to-pdf-api](https://github.com/alvarcarto/url-to-pdf-api))

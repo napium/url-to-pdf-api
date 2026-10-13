@@ -25,7 +25,7 @@ function closeServer(signal) {
   server.destroy();
 }
 
-// Handle signals gracefully. Heroku will send SIGTERM before idle.
+// Handle signals gracefully (e.g. systemd or Docker stop)
 process.on('SIGTERM', closeServer.bind(this, 'SIGTERM'));
 process.on('SIGINT', closeServer.bind(this, 'SIGINT(Ctrl-C)'));
 
