@@ -287,7 +287,7 @@ npx puppeteer browsers install chrome --install-deps
 ```bash
 git clone https://github.com/napium/url-to-pdf-api.git
 cd url-to-pdf-api
-npm install
+npm install --omit=dev
 ```
 
 ### 4. Configuration (.env)
