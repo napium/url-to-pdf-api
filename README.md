@@ -434,10 +434,10 @@ sudo systemctl enable --now pdf-engine
 
 ## Techstack
 
-* Node 18+ (async/await, ES2020+)
+* Node 22.12+ (LTS)
 * [Express.js](https://expressjs.com/)
 * [Puppeteer](https://pptr.dev/) to control Headless Chrome / Chromium
-* Joi / express-validation
+* [Joi](https://joi.dev/)
 
 ## License
 

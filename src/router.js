@@ -1,6 +1,6 @@
 const _ = require('lodash');
-const validate = require('express-validation');
 const express = require('express');
+const validate = require('./middleware/validate');
 const pdf = require('./http/pdf-http');
 const config = require('./config');
 const logger = require('./util/logger')(__filename);
@@ -28,24 +28,12 @@ function createRouter() {
 
   const getRenderSchema = {
     query: renderQuerySchema,
-    options: {
-      allowUnknownBody: false,
-      allowUnknownQuery: false,
-    },
   };
   router.get('/api/render', validate(getRenderSchema), pdf.getRender);
 
   const postRenderSchema = {
     body: renderBodySchema,
     query: sharedQuerySchema,
-    options: {
-      allowUnknownBody: false,
-      allowUnknownQuery: false,
-
-      // Without this option, text body causes an error
-      // https://github.com/AndrewKeig/express-validation/issues/36
-      contextRequest: true,
-    },
   };
   router.post('/api/render', validate(postRenderSchema), pdf.postRender);
 

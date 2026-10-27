@@ -16,17 +16,17 @@ const cookieSchema = Joi.object({
   expires: Joi.number().min(1),
   httpOnly: Joi.boolean(),
   secure: Joi.boolean(),
-  sameSite: Joi.string().regex(/^(Strict|Lax)$/),
+  sameSite: Joi.string().pattern(/^(Strict|Lax)$/),
 });
 
 const sharedQuerySchema = Joi.object({
   scrollPage: Joi.boolean(),
   emulateScreenMedia: Joi.boolean(),
   ignoreHttpsErrors: Joi.boolean(),
-  waitFor: Joi.alternatives([
+  waitFor: Joi.alternatives().try(
     Joi.number().min(1).max(60000),
     Joi.string().min(1).max(2000),
-  ]),
+  ),
   cookies: Joi.array().items(cookieSchema),
   'viewport.width': Joi.number().min(1).max(30000),
   'viewport.height': Joi.number().min(1).max(30000),
@@ -71,10 +71,10 @@ const renderBodyObject = Joi.object({
     hasTouch: Joi.boolean(),
     isLandscape: Joi.boolean(),
   }),
-  waitFor: Joi.alternatives([
+  waitFor: Joi.alternatives().try(
     Joi.number().min(1).max(60000),
     Joi.string().min(1).max(2000),
-  ]),
+  ),
   goto: Joi.object({
     timeout: Joi.number().min(0).max(60000),
     waitUntil: Joi.string().min(1).max(2000),
@@ -99,10 +99,10 @@ const renderBodyObject = Joi.object({
   }),
 });
 
-const renderBodySchema = Joi.alternatives([
+const renderBodySchema = Joi.alternatives().try(
   Joi.string(),
   renderBodyObject,
-]);
+);
 
 module.exports = {
   renderQuerySchema,
